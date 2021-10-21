@@ -1,0 +1,41 @@
+@using NonFactors.Mvc.Grid
+@model AdminPoC.ViewModels.IndexViewModel
+
+@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+
+<html>
+<head>
+    <title>title</title>
+    <link href="/css/mvc-grid.css" rel="stylesheet">
+</head>
+<body>
+<div>
+    @(Html
+        .Grid(Model.Entities)
+        .Build(columns =>
+        {
+            foreach (var column in Model.Columns)
+            {
+                columns
+                    .Add(model => column.Func(model))
+                    .Titled(column.Name);
+            }
+        })
+        .Using(GridFilterMode.Header)
+        .Empty("No data found")
+        .Filterable()
+        .Sortable()
+        .Pageable()
+        )
+</div>
+<script src="/js/mvc-grid.js"></script>
+<script>
+
+           document.querySelectorAll(".mvc-grid").forEach(element => new MvcGrid(element));
+        </script>
+</body>
+</html>
