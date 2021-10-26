@@ -8,6 +8,7 @@ namespace AdminPoC
     using System;
     using System.Linq;
     using AdminCoreTest.Server;
+    using AdminPoC.Attributes;
     using AdminPoC.Extensions;
     using AdminPoC.Models;
     using Microsoft.EntityFrameworkCore;
@@ -25,7 +26,12 @@ namespace AdminPoC
 
             services.AddAdmin();
 
-            services.AddControllersWithViews();
+            services.AddControllersWithViews()
+                .AddMvcOptions(o => o.Conventions.Add(new GenericAdminControllerNameConvention()))
+                .ConfigureApplicationPartManager(c =>
+                {
+                    c.FeatureProviders.Add(new GenericAdminControllerFeatureProvider());
+                });
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
@@ -44,6 +50,8 @@ namespace AdminPoC
                 endpoints.MapControllerRoute(
                     "default",
                     pattern: "{controller=Home}/{action=Index}/{id?}");
+
+                endpoints.MapControllers();
             });
 
             this.FillData(app);

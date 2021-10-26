@@ -6,7 +6,7 @@
     Layout = "_Layout";
 }
 
-<form asp-controller="Admin" asp-action="Create">
+<form asp-action="Create">
     @foreach (var property in Model.Properties)
     {
         @Html.Label(property.Name, property.Name)

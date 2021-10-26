@@ -8,7 +8,7 @@ namespace AdminPoC.Controllers
     using Microsoft.EntityFrameworkCore;
 
     public class TasksAdminController
-        : AdminController
+        : AdminController<Task>
     {
         public TasksAdminController(DbContext db, IEnumerable<DiscoveredDbSetEntityType> dbSetEntityTypes)
             : base(db, dbSetEntityTypes)

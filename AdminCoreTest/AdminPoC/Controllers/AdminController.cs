@@ -5,16 +5,16 @@ namespace AdminPoC.Controllers
     using System.ComponentModel.DataAnnotations;
     using System.Linq;
     using System.Reflection;
+    using AdminPoC.Attributes;
     using AdminPoC.Extensions;
-    using AdminPoC.Models;
     using AdminPoC.Services;
     using AdminPoC.ViewModels;
     using Microsoft.AspNetCore.Mvc;
     using Microsoft.AspNetCore.Mvc.Rendering;
     using Microsoft.EntityFrameworkCore;
 
-
-    public class AdminController : Controller
+    [GenericAdminControllerNameConvention]
+    public class AdminController<T> : Controller
     {
         private readonly DbContext db;
         private readonly IEnumerable<DiscoveredDbSetEntityType> dbSetEntityTypes;
@@ -47,18 +47,19 @@ namespace AdminPoC.Controllers
         public virtual IActionResult Create(IDictionary<string, string> obj)
         {
             var entityName = obj["entityName"];
-            var (entityType, dbContextType) = this.GetEntityTypeAndSet(entityName);
+            var entityType = this.GetEntityTypeAndSet(entityName);
 
             var model = Activator.CreateInstance(entityType);
             var converter = new ConverterService();
 
             foreach (var propertyInfo in entityType.GetProperties()
                 .Where(x => IsSimplePropertyForCreate(x)
-                            || (x.Name.ToLower().EndsWith("id") && x.Name.ToLower() != "id")))
+                            || (x.Name.ToLower().EndsWith("id") && !Attribute.IsDefined(x, typeof(KeyAttribute)))))
             {
                 var stringValue = obj[propertyInfo.Name];
                 var propertyType = propertyInfo.PropertyType;
                 var value = converter.ConvertToType(stringValue, propertyType);
+                this.ValidateProperty(propertyInfo.Name, value);
                 propertyInfo.SetValue(model, value);
             }
 
@@ -73,9 +74,13 @@ namespace AdminPoC.Controllers
             return this.Redirect("/projectsadmin");
         }
 
+        protected virtual void ValidateProperty(string propertyName, object value)
+        {
+        }
+
         private IndexViewModel GetIndexViewModel(string entityName)
         {
-            var (entityType, dbContextType) = this.GetEntityTypeAndSet(entityName);
+            var entityType = this.GetEntityTypeAndSet(entityName);
 
             var dbSet = this.GetDbSetByType(entityType) as IQueryable<object>;
 
@@ -94,7 +99,7 @@ namespace AdminPoC.Controllers
 
         private CreateViewModel GetCreateViewModel(string entityName)
         {
-            var (entityType, dbContextType) = this.GetEntityTypeAndSet(entityName);
+            var entityType = this.GetEntityTypeAndSet(entityName);
             var properties = entityType.GetProperties()
                 .Where(IsSimplePropertyForCreate)
                 .Select(propertyInfo => new InputType
@@ -192,11 +197,17 @@ namespace AdminPoC.Controllers
                 .ToList();
         }
 
-        private (Type, Type ) GetEntityTypeAndSet(string entityName)
+        private Type GetEntityTypeAndSet(string entityName)
         {
-            var dbSetEntity = this.dbSetEntityTypes
-                .FirstOrDefault(x => string.Equals(x.Name, entityName, StringComparison.CurrentCultureIgnoreCase));
-            return (dbSetEntity.UnderlyingType, dbSetEntity.DbContextType);
+            var entityType =
+                string.IsNullOrEmpty(entityName)
+                    ? typeof(T)
+                    : this.dbSetEntityTypes
+                        .FirstOrDefault(x =>
+                            string.Equals(x.Name, entityName, StringComparison.CurrentCultureIgnoreCase))
+                        ?.UnderlyingType;
+
+            return entityType;
         }
     }
 }
