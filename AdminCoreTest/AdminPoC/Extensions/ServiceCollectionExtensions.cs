@@ -6,12 +6,9 @@ namespace AdminPoC.Extensions
     using Microsoft.EntityFrameworkCore;
     using Microsoft.Extensions.DependencyInjection;
 
-    public class DiscoveredDbSetEntityType
+    public class DbContextEntityType
     {
-        public Type DbContextType { get; set; }
-        public string Name { get; internal set; }
-        public Type DbSetType { get; internal set; }
-        public Type UnderlyingType { get; internal set; }
+        public Type EntityType { get; internal set; }
     }
 
     public static class ServiceCollectionExtensions
@@ -23,11 +20,10 @@ namespace AdminPoC.Extensions
             services.AddControllersWithViews();
         }
 
-
         private static void FindDbContexts(IServiceCollection services)
         {
             var servicesToRemove = services
-                .Where(s => s.ServiceType == typeof(DiscoveredDbSetEntityType))
+                .Where(s => s.ServiceType == typeof(DbContextEntityType))
                 .ToList();
 
             servicesToRemove
@@ -40,12 +36,9 @@ namespace AdminPoC.Extensions
                 .SelectMany(s => s.ImplementationType?.GetProperties()
                     .Where(p => p.PropertyType.IsGenericType
                                 && p.PropertyType.Name.StartsWith("DbSet"))
-                    .Select(p => new DiscoveredDbSetEntityType
+                    .Select(p => new DbContextEntityType
                     {
-                        DbContextType = s.ImplementationType,
-                        DbSetType = p.PropertyType,
-                        UnderlyingType = p.PropertyType.GenericTypeArguments.First(),
-                        Name = p.Name,
+                        EntityType = p.PropertyType.GenericTypeArguments.First(),
                     }))
                 .ToList()
                 .ForEach(s => services.AddTransient(_ => s));

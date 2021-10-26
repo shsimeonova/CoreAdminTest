@@ -4,14 +4,13 @@ namespace AdminPoC.Controllers
     using AdminPoC.Extensions;
     using AdminPoC.Models;
     using AdminPoC.ViewModels;
-    using Microsoft.AspNetCore.Mvc;
     using Microsoft.EntityFrameworkCore;
 
     public class TaskController
         : AdminController<Task>
     {
-        public TaskController(DbContext db, IEnumerable<DiscoveredDbSetEntityType> dbSetEntityTypes)
-            : base(db, dbSetEntityTypes)
+        public TaskController(DbContext db, IEnumerable<DbContextEntityType> entityTypes)
+            : base(db, entityTypes)
         {
         }
 
@@ -27,8 +26,5 @@ namespace AdminPoC.Controllers
 
         protected override IEnumerable<string> RelatedEntityNames
             => new[] { nameof(Task.Project) };
-
-        public override IActionResult Index(string id)
-            => base.Index("tasks");
     }
 }

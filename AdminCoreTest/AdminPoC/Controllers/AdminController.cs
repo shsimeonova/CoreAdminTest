@@ -2,12 +2,10 @@ namespace AdminPoC.Controllers
 {
     using System;
     using System.Collections.Generic;
-    using System.ComponentModel.DataAnnotations;
     using System.Linq;
     using System.Reflection;
     using AdminPoC.Attributes;
     using AdminPoC.Extensions;
-    using AdminPoC.Services;
     using AdminPoC.ViewModels;
     using Microsoft.AspNetCore.Mvc;
     using Microsoft.AspNetCore.Mvc.Rendering;
@@ -19,7 +17,7 @@ namespace AdminPoC.Controllers
         where T : class
     {
         private readonly DbContext db;
-        private readonly IEnumerable<DiscoveredDbSetEntityType> dbSetEntityTypes;
+        private readonly ISet<Type> entityTypes;
         private readonly Type entityType;
 
         protected virtual IEnumerable<EntityColumn> DynamicColumns
@@ -33,19 +31,20 @@ namespace AdminPoC.Controllers
 
         public AdminController(
             DbContext db,
-            IEnumerable<DiscoveredDbSetEntityType> dbSetEntityTypes)
+            IEnumerable<DbContextEntityType> entityTypes)
         {
             this.db = db;
-            this.dbSetEntityTypes = dbSetEntityTypes;
+            this.entityTypes = entityTypes.Select(x => x.EntityType)
+                .ToHashSet();
             this.entityType = typeof(T);
         }
 
-        public virtual IActionResult Index(string id)
-            => this.View("../Admin/Index", this.GetIndexViewModel(id));
+        public virtual IActionResult Index()
+            => this.View("../Admin/Index", this.GetIndexViewModel());
 
         [HttpGet]
-        public virtual IActionResult Create(string id)
-            => this.View("../Admin/Create", this.GetCreateViewModel(id));
+        public virtual IActionResult Create()
+            => this.View("../Admin/Create", this.GetCreateViewModel());
 
         [HttpPost]
         public virtual IActionResult Create(T obj)
@@ -62,7 +61,7 @@ namespace AdminPoC.Controllers
         {
         }
 
-        private IndexViewModel GetIndexViewModel(string entityName)
+        private IndexViewModel GetIndexViewModel()
         {
             var dbSet = this.db.Set<T>()
                 .AsQueryable();
@@ -80,50 +79,35 @@ namespace AdminPoC.Controllers
             };
         }
 
-        private CreateViewModel GetCreateViewModel(string entityName)
-        {
-            var properties = this.entityType.GetProperties()
-                .Where(IsSimplePropertyForCreate)
-                .Select(propertyInfo => new InputType
-                {
-                    Name = propertyInfo.Name,
-                    Type = propertyInfo.GetType(),
-                });
-
-            var complexProperties = this.entityType
-                .GetProperties()
-                .Where(propertyInfo =>
-                    this.dbSetEntityTypes.Any(
-                        et => et.UnderlyingType == propertyInfo.PropertyType))
-                .Select(propertyInfo =>
-                {
-                    var type = propertyInfo.PropertyType;
-
-                    var values = (this.db.Set(type) as IQueryable<object>)
-                        .ToList()
-                        .Select(x => new SelectListItem
-                        {
-                            Text = x.ToString(),
-                            Value = type.GetPrimaryKeyPropertyInfo()
-                                .GetValue(x)
-                                .ToString(),
-                        })
-                        .ToList();
-                    return new ComplexInputType
+        private CreateViewModel GetCreateViewModel()
+            => new()
+            {
+                Properties = this.entityType.GetProperties()
+                    .Where(IsSimplePropertyForCreate)
+                    .Select(propertyInfo => new InputType
+                    {
+                        Name = propertyInfo.Name,
+                        Type = propertyInfo.GetType(),
+                    }),
+                ComplexProperties = this.entityType
+                    .GetProperties()
+                    .Where(propertyInfo =>
+                        this.entityTypes.Contains(propertyInfo.PropertyType))
+                    .Select(propertyInfo => new ComplexInputType
                     {
                         Name = propertyInfo.Name + "Id",
-                        Type = type,
-                        Values = values,
-                    };
-                });
-
-            return new CreateViewModel
-            {
-                EntityName = entityName,
-                Properties = properties,
-                ComplexProperties = complexProperties,
+                        Type = propertyInfo.PropertyType,
+                        Values = (this.db.Set(propertyInfo.PropertyType) as IQueryable<object>)
+                            .Select(x => new SelectListItem
+                            {
+                                Text = x.ToString(),
+                                Value = propertyInfo.PropertyType
+                                    .GetPrimaryKeyPropertyInfo()
+                                    .GetValue(x)
+                                    .ToString(),
+                            }),
+                    }),
             };
-        }
 
         private static bool IsSimpleType(Type t)
         {

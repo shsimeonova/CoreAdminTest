@@ -6,8 +6,6 @@ namespace AdminPoC.ViewModels
 
     public class CreateViewModel
     {
-        public string EntityName { get; set; }
-
         public IEnumerable<InputType> Properties { get; set; }
 
         public IEnumerable<ComplexInputType> ComplexProperties { get; set; }
