@@ -1,6 +1,9 @@
 namespace AdminPoC.Extensions
 {
     using System;
+    using System.ComponentModel.DataAnnotations;
+    using System.Linq;
+    using System.Reflection;
 
     public static class TypeExtensions
     {
@@ -19,5 +22,10 @@ namespace AdminPoC.Extensions
 
             return false;
         }
+
+        public static PropertyInfo GetPrimaryKeyPropertyInfo(this Type type)
+            => type
+                .GetProperties()
+                .FirstOrDefault(pi => Attribute.IsDefined(pi, typeof(KeyAttribute)));
     }
 }

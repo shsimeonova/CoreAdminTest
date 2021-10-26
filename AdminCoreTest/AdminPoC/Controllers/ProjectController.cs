@@ -36,15 +36,13 @@ namespace AdminPoC.Controllers
         public override IActionResult Create(string id)
             => base.Create("projects");
 
-        protected override void ValidateProperty(string propertyName, object value)
+
+        protected override void ValidateObject(Project obj)
         {
-            if (string.Equals(propertyName, nameof(Project.Name), StringComparison.CurrentCultureIgnoreCase))
-            {
-                this.ValidateProjectName(value.ToString());
-            }
+            ValidateProjectName(obj.Name);
         }
 
-        private void ValidateProjectName(string value)
+        private static void ValidateProjectName(string value)
         {
             if (value.Contains('@'))
             {

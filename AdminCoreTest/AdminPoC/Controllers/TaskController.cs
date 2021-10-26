@@ -7,10 +7,10 @@ namespace AdminPoC.Controllers
     using Microsoft.AspNetCore.Mvc;
     using Microsoft.EntityFrameworkCore;
 
-    public class TasksAdminController
+    public class TaskController
         : AdminController<Task>
     {
-        public TasksAdminController(DbContext db, IEnumerable<DiscoveredDbSetEntityType> dbSetEntityTypes)
+        public TaskController(DbContext db, IEnumerable<DiscoveredDbSetEntityType> dbSetEntityTypes)
             : base(db, dbSetEntityTypes)
         {
         }

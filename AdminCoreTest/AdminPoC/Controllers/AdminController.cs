@@ -14,10 +14,13 @@ namespace AdminPoC.Controllers
     using Microsoft.EntityFrameworkCore;
 
     [GenericAdminControllerNameConvention]
-    public class AdminController<T> : Controller
+    public class AdminController<T>
+        : Controller
+        where T : class
     {
         private readonly DbContext db;
         private readonly IEnumerable<DiscoveredDbSetEntityType> dbSetEntityTypes;
+        private readonly Type entityType;
 
         protected virtual IEnumerable<EntityColumn> DynamicColumns
             => new List<EntityColumn>();
@@ -34,6 +37,7 @@ namespace AdminPoC.Controllers
         {
             this.db = db;
             this.dbSetEntityTypes = dbSetEntityTypes;
+            this.entityType = typeof(T);
         }
 
         public virtual IActionResult Index(string id)
@@ -44,51 +48,30 @@ namespace AdminPoC.Controllers
             => this.View("../Admin/Create", this.GetCreateViewModel(id));
 
         [HttpPost]
-        public virtual IActionResult Create(IDictionary<string, string> obj)
+        public virtual IActionResult Create(T obj)
         {
-            var entityName = obj["entityName"];
-            var entityType = this.GetEntityTypeAndSet(entityName);
-
-            var model = Activator.CreateInstance(entityType);
-            var converter = new ConverterService();
-
-            foreach (var propertyInfo in entityType.GetProperties()
-                .Where(x => IsSimplePropertyForCreate(x)
-                            || (x.Name.ToLower().EndsWith("id") && !Attribute.IsDefined(x, typeof(KeyAttribute)))))
-            {
-                var stringValue = obj[propertyInfo.Name];
-                var propertyType = propertyInfo.PropertyType;
-                var value = converter.ConvertToType(stringValue, propertyType);
-                this.ValidateProperty(propertyInfo.Name, value);
-                propertyInfo.SetValue(model, value);
-            }
-
-            var dbSet = this.GetDbSetByType(entityType);
-
-            dbSet.GetType()
-                .GetMethod("Add")
-                ?.Invoke(dbSet, new[] { model });
-
+            this.ValidateObject(obj);
+            this.db.Set<T>()
+                .Add(obj);
             this.db.SaveChanges();
 
-            return this.Redirect("/projectsadmin");
+            return this.RedirectToAction("Index");
         }
 
-        protected virtual void ValidateProperty(string propertyName, object value)
+        protected virtual void ValidateObject(T obj)
         {
         }
 
         private IndexViewModel GetIndexViewModel(string entityName)
         {
-            var entityType = this.GetEntityTypeAndSet(entityName);
-
-            var dbSet = this.GetDbSetByType(entityType) as IQueryable<object>;
+            var dbSet = this.db.Set<T>()
+                .AsQueryable();
 
             this.RelatedEntityNames
                 .ToList()
                 .ForEach(include => { dbSet = dbSet.Include(include); });
 
-            var entityColumns = this.GetEntityColumns(entityType);
+            var entityColumns = this.GetEntityColumns(this.entityType);
 
             return new IndexViewModel
             {
@@ -99,8 +82,7 @@ namespace AdminPoC.Controllers
 
         private CreateViewModel GetCreateViewModel(string entityName)
         {
-            var entityType = this.GetEntityTypeAndSet(entityName);
-            var properties = entityType.GetProperties()
+            var properties = this.entityType.GetProperties()
                 .Where(IsSimplePropertyForCreate)
                 .Select(propertyInfo => new InputType
                 {
@@ -108,32 +90,30 @@ namespace AdminPoC.Controllers
                     Type = propertyInfo.GetType(),
                 });
 
-            var complexProperties = entityType
+            var complexProperties = this.entityType
                 .GetProperties()
                 .Where(propertyInfo =>
-                    this.dbSetEntityTypes.Any(et => et.UnderlyingType == propertyInfo.PropertyType))
+                    this.dbSetEntityTypes.Any(
+                        et => et.UnderlyingType == propertyInfo.PropertyType))
                 .Select(propertyInfo =>
                 {
                     var type = propertyInfo.PropertyType;
+
+                    var values = (this.db.Set(type) as IQueryable<object>)
+                        .ToList()
+                        .Select(x => new SelectListItem
+                        {
+                            Text = x.ToString(),
+                            Value = type.GetPrimaryKeyPropertyInfo()
+                                .GetValue(x)
+                                .ToString(),
+                        })
+                        .ToList();
                     return new ComplexInputType
                     {
                         Name = propertyInfo.Name + "Id",
                         Type = type,
-                        Values = (this.GetDbSetByType(type) as IQueryable<object>)
-                            .ToList()
-                            .Select(x =>
-                            {
-                                var primaryKeyType = type
-                                    .GetProperties()
-                                    .FirstOrDefault(pi => Attribute.IsDefined((MemberInfo)pi, typeof(KeyAttribute)));
-
-                                return new SelectListItem
-                                {
-                                    Text = x.ToString(),
-                                    Value = primaryKeyType.GetValue(x).ToString(),
-                                };
-                            })
-                            .ToList(),
+                        Values = values,
                     };
                 });
 
@@ -144,12 +124,6 @@ namespace AdminPoC.Controllers
                 ComplexProperties = complexProperties,
             };
         }
-
-        private object GetDbSetByType(Type type)
-            => this.db.GetType()
-                .GetMethod("Set", Array.Empty<Type>())
-                .MakeGenericMethod(type)
-                .Invoke(this.db, null);
 
         private static bool IsSimpleType(Type t)
         {
@@ -195,19 +169,6 @@ namespace AdminPoC.Controllers
                     Func = model => propertyInfo.GetValue(model).ToString(),
                 })
                 .ToList();
-        }
-
-        private Type GetEntityTypeAndSet(string entityName)
-        {
-            var entityType =
-                string.IsNullOrEmpty(entityName)
-                    ? typeof(T)
-                    : this.dbSetEntityTypes
-                        .FirstOrDefault(x =>
-                            string.Equals(x.Name, entityName, StringComparison.CurrentCultureIgnoreCase))
-                        ?.UnderlyingType;
-
-            return entityType;
         }
     }
 }
