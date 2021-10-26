@@ -22,7 +22,9 @@
             {
                 columns
                     .Add(model => column.Func(model))
-                    .Titled(column.Name);
+                    .Titled(column.Name)
+                    .Named(column.Name)
+                    .Sortable(true);
             }
         })
         .Using(GridFilterMode.Header)

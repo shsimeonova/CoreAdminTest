@@ -1,8 +1,17 @@
-@model dynamic
+@using AdminPoC.ViewModels;
+@model CreateViewModel
 
 @{
     ViewBag.Title = "title";
     Layout = "_Layout";
 }
 
-<h2>title</h2>
+<form asp-controller="Admin" asp-action="Create">
+    @foreach (var property in Model.Properties)
+    {
+        @Html.Label(property.Name, property.Name)
+        @Html.Editor(property.Name)
+    }
+    <input type="hidden" value="@Model.EntityName" name="entityName"/>
+    <button>Create</button>
+</form>

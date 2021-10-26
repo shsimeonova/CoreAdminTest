@@ -36,9 +36,40 @@ namespace AdminPoC.Controllers
         public virtual IActionResult Index(string id)
             => this.View("../Admin/Index", this.GetIndexViewModel(id));
 
-        // [HttpGet]
-        // public virtual IActionResult Create(string id)
-        //     => this.View("../Admin/Create", this.GetCreateViewModel(id));
+        [HttpGet]
+        public virtual IActionResult Create(string id)
+            => this.View("../Admin/Create", this.GetCreateViewModel(id));
+
+        [HttpPost]
+        public virtual IActionResult Create(IDictionary<string, string> obj)
+        {
+            var entityName = obj["entityName"];
+            var (entityType, dbContextType) = this.GetEntityTypeAndSet(entityName);
+
+            var model = Activator.CreateInstance(entityType);
+
+            foreach (var propertyInfo in entityType.GetProperties()
+                .Where(IsDefaultColumnForCreate))
+            {
+                var stringValue = obj[propertyInfo.Name];
+                var propertyType = propertyInfo.PropertyType;
+                var value = Convert.ChangeType(stringValue, propertyType);
+                propertyInfo.SetValue(model, value);
+            }
+            
+            var dbSet = this.db.GetType()
+                .GetMethod("Set", Array.Empty<Type>())
+                ?.MakeGenericMethod(entityType)
+                .Invoke(this.db, null);
+
+            dbSet.GetType()
+                .GetMethod("Add")
+                .Invoke(dbSet, new[] { model });
+
+            this.db.SaveChanges();
+
+            return this.Redirect("/projectsadmin");
+        }
 
         private IndexViewModel GetIndexViewModel(string entityName)
         {
@@ -61,10 +92,26 @@ namespace AdminPoC.Controllers
             };
         }
 
-        // private CreateViewModel GetCreateViewModel(string entityName)
-        // {
-        //     var () = this.GetEntityTypeAndSet(entityName);
-        // }
+        private CreateViewModel GetCreateViewModel(string entityName)
+        {
+            var (entityType, dbContextType) = this.GetEntityTypeAndSet(entityName);
+            var properties = entityType.GetProperties()
+                .Where(IsDefaultColumnForCreate)
+                .Select(propertyInfo => new InputType
+                {
+                    Name = propertyInfo.Name,
+                    Type = propertyInfo.GetType(),
+                });
+
+            return new CreateViewModel
+            {
+                Properties = properties,
+                EntityName = entityName,
+            };
+        }
+
+        private static bool IsDefaultColumnForCreate(PropertyInfo propertyInfo)
+            => IsDefaultColumn(propertyInfo) && propertyInfo.Name.ToLower() != "id";
 
         private static bool IsDefaultColumn(PropertyInfo propertyInfo)
         {
@@ -97,7 +144,8 @@ namespace AdminPoC.Controllers
                 {
                     Name = propertyInfo.Name,
                     Func = model => propertyInfo.GetValue(model).ToString(),
-                });
+                })
+                .ToList();
         }
 
         private (Type, Type ) GetEntityTypeAndSet(string entityName)

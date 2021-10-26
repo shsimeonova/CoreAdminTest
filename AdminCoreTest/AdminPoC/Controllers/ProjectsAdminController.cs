@@ -34,5 +34,8 @@ namespace AdminPoC.Controllers
 
         public override IActionResult Index(string id)
             => base.Index("projects");
+
+        public override IActionResult Create(string id)
+            => base.Create("projects");
     }
 }
