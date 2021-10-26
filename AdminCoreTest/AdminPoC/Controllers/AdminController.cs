@@ -2,12 +2,15 @@ namespace AdminPoC.Controllers
 {
     using System;
     using System.Collections.Generic;
+    using System.ComponentModel.DataAnnotations;
     using System.Linq;
     using System.Reflection;
     using AdminPoC.Extensions;
     using AdminPoC.Models;
+    using AdminPoC.Services;
     using AdminPoC.ViewModels;
     using Microsoft.AspNetCore.Mvc;
+    using Microsoft.AspNetCore.Mvc.Rendering;
     using Microsoft.EntityFrameworkCore;
 
 
@@ -47,24 +50,23 @@ namespace AdminPoC.Controllers
             var (entityType, dbContextType) = this.GetEntityTypeAndSet(entityName);
 
             var model = Activator.CreateInstance(entityType);
+            var converter = new ConverterService();
 
             foreach (var propertyInfo in entityType.GetProperties()
-                .Where(IsDefaultColumnForCreate))
+                .Where(x => IsSimplePropertyForCreate(x)
+                            || (x.Name.ToLower().EndsWith("id") && x.Name.ToLower() != "id")))
             {
                 var stringValue = obj[propertyInfo.Name];
                 var propertyType = propertyInfo.PropertyType;
-                var value = Convert.ChangeType(stringValue, propertyType);
+                var value = converter.ConvertToType(stringValue, propertyType);
                 propertyInfo.SetValue(model, value);
             }
-            
-            var dbSet = this.db.GetType()
-                .GetMethod("Set", Array.Empty<Type>())
-                ?.MakeGenericMethod(entityType)
-                .Invoke(this.db, null);
+
+            var dbSet = this.GetDbSetByType(entityType);
 
             dbSet.GetType()
                 .GetMethod("Add")
-                .Invoke(dbSet, new[] { model });
+                ?.Invoke(dbSet, new[] { model });
 
             this.db.SaveChanges();
 
@@ -75,9 +77,7 @@ namespace AdminPoC.Controllers
         {
             var (entityType, dbContextType) = this.GetEntityTypeAndSet(entityName);
 
-            var dbSet = dbContextType.GetProperties()
-                .FirstOrDefault(p => p.Name.ToLower() == entityName)
-                ?.GetValue(this.db) as IQueryable<object>;
+            var dbSet = this.GetDbSetByType(entityType) as IQueryable<object>;
 
             this.RelatedEntityNames
                 .ToList()
@@ -87,7 +87,7 @@ namespace AdminPoC.Controllers
 
             return new IndexViewModel
             {
-                Entities = dbSet,
+                Entities = dbSet.Reverse(),
                 Columns = entityColumns.Concat(this.DynamicColumns),
             };
         }
@@ -96,24 +96,57 @@ namespace AdminPoC.Controllers
         {
             var (entityType, dbContextType) = this.GetEntityTypeAndSet(entityName);
             var properties = entityType.GetProperties()
-                .Where(IsDefaultColumnForCreate)
+                .Where(IsSimplePropertyForCreate)
                 .Select(propertyInfo => new InputType
                 {
                     Name = propertyInfo.Name,
                     Type = propertyInfo.GetType(),
                 });
 
+            var complexProperties = entityType
+                .GetProperties()
+                .Where(propertyInfo =>
+                    this.dbSetEntityTypes.Any(et => et.UnderlyingType == propertyInfo.PropertyType))
+                .Select(propertyInfo =>
+                {
+                    var type = propertyInfo.PropertyType;
+                    return new ComplexInputType
+                    {
+                        Name = propertyInfo.Name + "Id",
+                        Type = type,
+                        Values = (this.GetDbSetByType(type) as IQueryable<object>)
+                            .ToList()
+                            .Select(x =>
+                            {
+                                var primaryKeyType = type
+                                    .GetProperties()
+                                    .FirstOrDefault(pi => Attribute.IsDefined((MemberInfo)pi, typeof(KeyAttribute)));
+
+                                return new SelectListItem
+                                {
+                                    Text = x.ToString(),
+                                    Value = primaryKeyType.GetValue(x).ToString(),
+                                };
+                            })
+                            .ToList(),
+                    };
+                });
+
             return new CreateViewModel
             {
-                Properties = properties,
                 EntityName = entityName,
+                Properties = properties,
+                ComplexProperties = complexProperties,
             };
         }
 
-        private static bool IsDefaultColumnForCreate(PropertyInfo propertyInfo)
-            => IsDefaultColumn(propertyInfo) && propertyInfo.Name.ToLower() != "id";
+        private object GetDbSetByType(Type type)
+            => this.db.GetType()
+                .GetMethod("Set", Array.Empty<Type>())
+                .MakeGenericMethod(type)
+                .Invoke(this.db, null);
 
-        private static bool IsDefaultColumn(PropertyInfo propertyInfo)
+        private static bool IsSimpleType(Type t)
         {
             var nonComplexTypes = new HashSet<Type>
             {
@@ -121,11 +154,22 @@ namespace AdminPoC.Controllers
                 typeof(DateTime),
             };
 
+            return nonComplexTypes.Contains(t) || t.IsPrimitive;
+        }
+
+        private static bool IsSimplePropertyForCreate(PropertyInfo propertyInfo)
+        {
+            return (IsSimpleType(propertyInfo.PropertyType)
+                    || propertyInfo.PropertyType.IsEnum)
+                   && !propertyInfo.Name.ToLower().EndsWith("id");
+        }
+
+        private static bool IsDefaultColumn(PropertyInfo propertyInfo)
+        {
             var propertyType = propertyInfo.PropertyType;
 
-            return propertyType.IsPrimitive
-                   || propertyType.IsEnum
-                   || nonComplexTypes.Contains(propertyType);
+            return IsSimpleType(propertyType)
+                   || propertyType.IsEnum;
         }
 
         private bool IsExplicitPropertyFilter(PropertyInfo propertyInfo)

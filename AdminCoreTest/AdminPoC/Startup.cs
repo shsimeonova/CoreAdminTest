@@ -71,7 +71,16 @@ namespace AdminPoC
                         DueDate = DateTime.Now.AddDays(index % 100 + 15),
                         ExecutionType = TaskExecutionType.Finished,
                         LabelType = TaskLabelType.Hibernate,
-                        ProjectId = index % 50 + 1  
+                        ProjectId = index % 50 + 1
+                    }));
+
+            context.Employees.AddRange(
+                Enumerable.Range(1, 10)
+                    .Select(index => new Employee()
+                    {
+                        Username = $"Employee {index}",
+                        Email = $"employee{index}@gmail.com",
+                        Phone = "123123 123  123",
                     }));
             context.SaveChanges();
         }

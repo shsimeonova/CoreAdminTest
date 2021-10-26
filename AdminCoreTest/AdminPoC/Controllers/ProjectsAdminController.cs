@@ -15,9 +15,6 @@ namespace AdminPoC.Controllers
         {
         }
 
-        protected override IEnumerable<string> StaticColumnNames
-            => new[] { nameof(Project.Name), nameof(Project.DueDate) };
-
         protected override IEnumerable<EntityColumn> DynamicColumns
             => new[]
             {

@@ -12,6 +12,12 @@
         @Html.Label(property.Name, property.Name)
         @Html.Editor(property.Name)
     }
+    @foreach (var property in Model.ComplexProperties)
+    {
+        @Html.DropDownList(
+            property.Name,
+            property.Values);
+    }
     <input type="hidden" value="@Model.EntityName" name="entityName"/>
     <button>Create</button>
 </form>
