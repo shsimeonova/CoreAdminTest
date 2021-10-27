@@ -3,9 +3,11 @@ namespace AdminPoC.Controllers
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Linq.Expressions;
     using System.Reflection;
     using AdminPoC.Attributes;
     using AdminPoC.Extensions;
+    using AdminPoC.Models;
     using AdminPoC.ViewModels;
     using Microsoft.AspNetCore.Mvc;
     using Microsoft.AspNetCore.Mvc.Rendering;
@@ -14,7 +16,7 @@ namespace AdminPoC.Controllers
     [GenericAdminControllerNameConvention]
     public class AdminController<T>
         : Controller
-        where T : class
+        where T : EntityBase
     {
         private readonly DbContext db;
         private readonly ISet<Type> entityTypes;
@@ -28,6 +30,21 @@ namespace AdminPoC.Controllers
 
         protected virtual IEnumerable<string> RelatedEntityNames
             => Array.Empty<string>();
+
+        protected IEnumerable<EntityAction> DefaultActions
+            => new[]
+            {
+                new EntityAction
+                {
+                    Name = "Delete",
+                }
+            };
+
+        protected virtual IEnumerable<EntityAction> CustomActions
+            => Array.Empty<EntityAction>();
+
+        protected IEnumerable<EntityAction> Actions =>
+            this.CustomActions.Concat(this.DefaultActions);
 
         public AdminController(
             DbContext db,
@@ -57,6 +74,53 @@ namespace AdminPoC.Controllers
             return this.RedirectToAction("Index");
         }
 
+        [HttpGet]
+        public IActionResult Delete(string id)
+        {
+            var lambda = this.GetObjectById(id);
+
+            var obj = this.db.Set<T>()
+                .FirstOrDefault(lambda);
+
+            this.db.Set<T>()
+                .Remove(obj);
+            this.db.SaveChanges();
+            return this.RedirectToAction("Index");
+        }
+
+        private Expression<Func<T, bool>> GetObjectById(string id)
+        {
+            var primaryKeyProp = this.entityType
+                .GetPrimaryKeyPropertyInfo();
+            var parameter = Expression.Parameter(typeof(EntityBase), "model");
+            var convertedParameter = Expression.Convert(
+                parameter,
+                this.entityType
+            );
+
+            var memberAccess = Expression.MakeMemberAccess(
+                convertedParameter,
+                primaryKeyProp
+            );
+
+            var cast = Expression.Call(
+                Expression.Convert(memberAccess, typeof(object)),
+                typeof(object).GetMethod("ToString")!);
+
+            var idMember = Expression.Convert(
+                Expression.Constant(id),
+                typeof(string));
+
+            var equals = Expression.Equal(
+                cast,
+                idMember
+            );
+
+            return Expression.Lambda<Func<T, bool>>(
+                equals,
+                parameter);
+        }
+
         protected virtual void ValidateObject(T obj)
         {
         }
@@ -70,12 +134,13 @@ namespace AdminPoC.Controllers
                 .ToList()
                 .ForEach(include => { dbSet = dbSet.Include(include); });
 
-            var entityColumns = this.GetEntityColumns(this.entityType);
+            var entityColumns = this.GetEntityColumns();
 
             return new IndexViewModel
             {
                 Entities = dbSet.Reverse(),
                 Columns = entityColumns.Concat(this.DynamicColumns),
+                Actions = this.Actions,
             };
         }
 
@@ -139,18 +204,41 @@ namespace AdminPoC.Controllers
             => this.StaticColumnNames
                 .Contains(propertyInfo.Name);
 
-        private IEnumerable<EntityColumn> GetEntityColumns(Type entityType)
+        private IEnumerable<EntityColumn> GetEntityColumns()
         {
             Func<PropertyInfo, bool> filter = this.StaticColumnNames.Any()
                 ? this.IsExplicitPropertyFilter
                 : IsDefaultColumn;
 
-            return entityType.GetProperties()
+            return this.entityType
+                .GetProperties()
                 .Where(filter)
-                .Select(propertyInfo => new EntityColumn
+                .Select(propertyInfo =>
                 {
-                    Name = propertyInfo.Name,
-                    Func = model => propertyInfo.GetValue(model).ToString(),
+                    var parameter = Expression.Parameter(typeof(EntityBase), "model");
+
+                    var convertedParameter = Expression.Convert(
+                        parameter,
+                        this.entityType
+                    );
+
+                    var memberAccess = Expression.MakeMemberAccess(
+                        convertedParameter,
+                        propertyInfo
+                    );
+
+                    var cast = Expression.Convert(
+                        memberAccess,
+                        typeof(object));
+
+                    var lambda = Expression.Lambda<Func<EntityBase, object>>(
+                        cast,
+                        parameter);
+                    return new EntityColumn
+                    {
+                        Name = propertyInfo.Name,
+                        Func = lambda,
+                    };
                 })
                 .ToList();
         }

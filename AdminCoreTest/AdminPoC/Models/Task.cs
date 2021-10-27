@@ -4,7 +4,11 @@
     using System.ComponentModel.DataAnnotations;
 
     public class Task
+        : EntityBase
     {
+        public override object PrimaryKey
+            => this.Id;
+
         [Key] public int Id { get; set; }
 
         public string Name { get; set; }

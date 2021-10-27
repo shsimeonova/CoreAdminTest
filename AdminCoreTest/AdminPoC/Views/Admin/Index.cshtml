@@ -13,6 +13,8 @@
     <link href="/css/mvc-grid.css" rel="stylesheet">
 </head>
 <body>
+
+@Html.ActionLink("Create", "Create")
 <div>
     @(Html
         .Grid(Model.Entities)
@@ -21,18 +23,33 @@
             foreach (var column in Model.Columns)
             {
                 columns
-                    .Add(model => column.Func(model))
+                    .Add(column.Func)
                     .Titled(column.Name)
                     .Named(column.Name)
-                    .Sortable(true);
+                    .Sortable(true)
+                    .Filterable(true);
+            }
+
+            foreach (var action in Model.Actions)
+            {
+                columns.Add(model =>
+                    Html.ActionLink(
+                        action.Name,
+                        "Delete",
+                        ViewContext.RouteData.Values["controller"].ToString(),
+                        new
+                        {
+                            id = model.PrimaryKey,
+                        },
+                        new { }
+                        ));
             }
         })
         .Using(GridFilterMode.Header)
         .Empty("No data found")
         .Filterable()
         .Sortable()
-        .Pageable()
-        )
+        .Pageable())
 </div>
 <script src="/js/mvc-grid.js"></script>
 <script>

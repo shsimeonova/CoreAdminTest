@@ -3,7 +3,10 @@
     using System.ComponentModel.DataAnnotations;
 
     public class EmployeeTasks
+        : EntityBase
     {
+        public override object PrimaryKey
+            => this.Id;
         [Key]
         public int Id { get; set; }
         
