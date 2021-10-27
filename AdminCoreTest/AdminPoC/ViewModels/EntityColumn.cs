@@ -15,6 +15,6 @@ namespace AdminPoC.ViewModels
     {
         public string Name { get; set; }
 
-        public Action<object> Action { get; set; }
+        public string Action { get; set; }
     }
 }

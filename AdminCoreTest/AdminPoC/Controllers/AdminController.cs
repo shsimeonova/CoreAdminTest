@@ -37,14 +37,15 @@ namespace AdminPoC.Controllers
                 new EntityAction
                 {
                     Name = "Delete",
+                    Action = "Delete",
                 }
             };
 
         protected virtual IEnumerable<EntityAction> CustomActions
             => Array.Empty<EntityAction>();
 
-        protected IEnumerable<EntityAction> Actions =>
-            this.CustomActions.Concat(this.DefaultActions);
+        private IEnumerable<EntityAction> Actions =>
+            this.DefaultActions.Concat(this.CustomActions);
 
         public AdminController(
             DbContext db,

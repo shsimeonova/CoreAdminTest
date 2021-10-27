@@ -35,7 +35,7 @@
                 columns.Add(model =>
                     Html.ActionLink(
                         action.Name,
-                        "Delete",
+                        action.Action,
                         ViewContext.RouteData.Values["controller"].ToString(),
                         new
                         {

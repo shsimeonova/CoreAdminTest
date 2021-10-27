@@ -5,6 +5,7 @@ namespace AdminPoC.Controllers
     using AdminPoC.Extensions;
     using AdminPoC.Models;
     using AdminPoC.ViewModels;
+    using Microsoft.AspNetCore.Mvc;
     using Microsoft.EntityFrameworkCore;
 
     public class ProjectController
@@ -27,6 +28,27 @@ namespace AdminPoC.Controllers
 
         protected override IEnumerable<string> RelatedEntityNames
             => new[] { "Tasks" };
+
+        protected override IEnumerable<EntityAction> CustomActions
+            => new[]
+            {
+                new EntityAction
+                {
+                    Name = "This",
+                    Action = "This"
+                },
+                new EntityAction
+                {
+                    Name = "That",
+                    Action = "That"
+                }
+            };
+
+        public IActionResult This()
+            => this.Ok("IT works!");
+
+        public IActionResult That(string id)
+            => this.Ok($"IT works with ID: {id}!");
 
         protected override void ValidateObject(Project obj)
         {
