@@ -1,7 +1,7 @@
 namespace AdminPoC.Controllers
 {
+    using System;
     using System.Collections.Generic;
-    using System.ComponentModel.DataAnnotations;
     using AdminPoC.Extensions;
     using AdminPoC.Models;
     using AdminPoC.ViewModels;
@@ -44,23 +44,27 @@ namespace AdminPoC.Controllers
                 }
             };
 
+        protected override IEnumerable<Func<Project, ValidatorResult>> EntityValidators
+            => new Func<Project, ValidatorResult>[]
+            {
+                ValidateProjectName,
+                ValidateProjectNameLength,
+            };
+
         public IActionResult This()
             => this.Ok("IT works!");
 
         public IActionResult That(string id)
             => this.Ok($"IT works with ID: {id}!");
 
-        protected override void ValidateObject(Project obj)
-        {
-            ValidateProjectName(obj.Name);
-        }
+        private static ValidatorResult ValidateProjectName(Project pr)
+            => pr.Name.Contains("@")
+                ? ValidatorResult.Error("Project name cannot contain '@'")
+                : ValidatorResult.Success();
 
-        private static void ValidateProjectName(string value)
-        {
-            if (value.Contains('@'))
-            {
-                throw new ValidationException("Project name cannot contain '@'");
-            }
-        }
+        private static ValidatorResult ValidateProjectNameLength(Project pr)
+            => pr.Name.Length < 20
+                ? ValidatorResult.Success()
+                : ValidatorResult.Error("Project name must be below 20 characters");
     }
 }

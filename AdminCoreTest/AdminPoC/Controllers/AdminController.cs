@@ -13,6 +13,26 @@ namespace AdminPoC.Controllers
     using Microsoft.AspNetCore.Mvc.Rendering;
     using Microsoft.EntityFrameworkCore;
 
+    public class ValidatorResult
+    {
+        public bool IsValid { get; set; }
+
+        public string Message { get; set; }
+
+        public static ValidatorResult Success()
+            => new()
+            {
+                IsValid = true,
+            };
+
+        public static ValidatorResult Error(string message)
+            => new()
+            {
+                IsValid = false,
+                Message = message,
+            };
+    }
+
     [GenericAdminControllerNameConvention]
     public class AdminController<T>
         : Controller
@@ -31,7 +51,10 @@ namespace AdminPoC.Controllers
         protected virtual IEnumerable<string> RelatedEntityNames
             => Array.Empty<string>();
 
-        protected IEnumerable<EntityAction> DefaultActions
+        protected virtual IEnumerable<Func<T, ValidatorResult>> EntityValidators
+            => Array.Empty<Func<T, ValidatorResult>>();
+
+        private static IEnumerable<EntityAction> DefaultActions
             => new[]
             {
                 new EntityAction
@@ -45,7 +68,7 @@ namespace AdminPoC.Controllers
             => Array.Empty<EntityAction>();
 
         private IEnumerable<EntityAction> Actions =>
-            this.DefaultActions.Concat(this.CustomActions);
+            DefaultActions.Concat(this.CustomActions);
 
         public AdminController(
             DbContext db,
@@ -67,7 +90,17 @@ namespace AdminPoC.Controllers
         [HttpPost]
         public virtual IActionResult Create(T obj)
         {
-            this.ValidateObject(obj);
+            var errors = this.EntityValidators
+                .Select(v => v(obj))
+                .Where(x => !x.IsValid)
+                .Select(x => x.Message)
+                .ToList();
+
+            if (errors.Any())
+            {
+                throw new Exception(string.Join(", ", errors));
+            }
+
             this.db.Set<T>()
                 .Add(obj);
             this.db.SaveChanges();
@@ -122,10 +155,6 @@ namespace AdminPoC.Controllers
                 parameter);
         }
 
-        protected virtual void ValidateObject(T obj)
-        {
-        }
-
         private IndexViewModel GetIndexViewModel()
         {
             var dbSet = this.db.Set<T>()
@@ -163,7 +192,7 @@ namespace AdminPoC.Controllers
                     {
                         Name = propertyInfo.Name + "Id",
                         Type = propertyInfo.PropertyType,
-                        Values = (this.db.Set(propertyInfo.PropertyType) as IQueryable<object>)
+                        Values = (this.db.Set(propertyInfo.PropertyType) as IQueryable<object>)!
                             .Select(x => new SelectListItem
                             {
                                 Text = x.ToString(),
