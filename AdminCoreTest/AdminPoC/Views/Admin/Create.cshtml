@@ -1,6 +1,4 @@
-@using AdminPoC.ViewModels;
-@model CreateViewModel
-
+@model AdminPoC.ViewModels.CreateViewModel
 @{
     ViewBag.Title = "title";
     Layout = "_Layout";
@@ -10,13 +8,15 @@
     @foreach (var property in Model.Properties)
     {
         @Html.Label(property.Name, property.Name)
-        @Html.Editor(property.Name)
+        <formInput for-type="property.Type" for-name="@property.Name"></formInput>
     }
+
     @foreach (var property in Model.ComplexProperties)
     {
         @Html.DropDownList(
             property.Name,
-            property.Values);
+            property.Values)
+        ;
     }
     <button>Create</button>
 </form>

@@ -17,9 +17,11 @@
 
         public DateTime DueDate { get; set; }
 
-        [Required] public TaskExecutionType ExecutionType { get; set; }
+        [Required] 
+        public TaskExecutionType ExecutionType { get; set; }
 
-        [Required] public TaskLabelType LabelType { get; set; }
+        [Required] 
+        public TaskLabelType LabelType { get; set; }
 
         public int ProjectId { get; set; }
 

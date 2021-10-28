@@ -61,6 +61,11 @@ namespace AdminPoC.Controllers
                 {
                     Name = "Delete",
                     Action = "Delete",
+                },
+                new EntityAction
+                {
+                    Name = "Edit",
+                    Action = "Edit",
                 }
             };
 
@@ -182,7 +187,7 @@ namespace AdminPoC.Controllers
                     .Select(propertyInfo => new InputType
                     {
                         Name = propertyInfo.Name,
-                        Type = propertyInfo.GetType(),
+                        Type = propertyInfo.PropertyType,
                     }),
                 ComplexProperties = this.entityType
                     .GetProperties()

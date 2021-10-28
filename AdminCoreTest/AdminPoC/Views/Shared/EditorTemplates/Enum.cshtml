@@ -1,0 +1,18 @@
+@model object
+
+@if (Model.GetType().IsEnum)
+{
+    var values = Enum.GetValues(ViewData.ModelMetadata.ModelType);
+    var names = Enum.GetNames(ViewData.ModelMetadata.ModelType);
+    var items = values
+        .Cast<object>()
+        .Select((t, i) => new SelectListItem
+        {
+            Text = names[i],
+            Value = values.GetValue(i)?.ToString(),
+            Selected = Model.ToString() == values.GetValue(i)?.ToString(),
+        })
+        .ToList();
+
+    @Html.DropDownList("", items, new { @class = "form-control" })
+}
