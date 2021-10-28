@@ -37,6 +37,11 @@ namespace AdminPoC.Controllers
             };
 
         protected override IEnumerable<string> RelatedEntityNames
-            => new[] { nameof(Task.Project), nameof(Task.EmployeeTasks) };
+            => new[]
+            {
+                nameof(Task.Project),
+                nameof(Task.EmployeeTasks),
+                $"{nameof(Task.EmployeeTasks)}.{nameof(EmployeeTasks.Employee)}",
+            };
     }
 }
