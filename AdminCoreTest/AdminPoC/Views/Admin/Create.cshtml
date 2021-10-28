@@ -8,7 +8,7 @@
     @foreach (var property in Model.Properties)
     {
         @Html.Label(property.Name, property.Name)
-        <formInput for-type="property.Type" for-name="property.Name"> </formInput>
+        <formInput for-type="property.Type" for-name="property.Name" class="form-control"> </formInput>
     }
 
     @foreach (var property in Model.ComplexProperties)
@@ -16,8 +16,12 @@
         @Html.Label(property.Name, property.Name)
         @Html.DropDownList(
             property.Name,
-            property.Values)
+            property.Values,
+            new
+            {
+                @class= "form-select"
+            })
         ;
     }
-    <button>Create</button>
+    <button class="btn btn-dark">Create</button>
 </form>

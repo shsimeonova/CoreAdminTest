@@ -16,7 +16,8 @@
             for-type="property.Type"
             for-name="@(property.Name)"
             with-value="currentValue"
-            readonly="@(property.IsReadonly)">
+            readonly="@(property.IsReadonly)"
+             class="form-control">
         </formInput>
     }
 
@@ -25,8 +26,12 @@
         @Html.Label(property.Name, property.Name)
         @Html.DropDownList(
             property.Name,
-            property.Values)
+            property.Values,
+            new
+            {
+                @class= "form-select"
+            })
         ;
     }
-    <button>Create</button>
+    <button class="btn btn-dark">Create</button>
 </form>

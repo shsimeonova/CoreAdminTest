@@ -63,7 +63,7 @@ namespace AdminPoC
             var context = scope?.ServiceProvider.GetRequiredService<TaskSystemDbContext>();
 
             context.Projects.AddRange(
-                Enumerable.Range(1, 1 << 10)
+                Enumerable.Range(1, 1 << 4)
                     .Select(index => new Project
                     {
                         Name = $"Project {index}",
@@ -71,7 +71,7 @@ namespace AdminPoC
                         DueDate = DateTime.Now.AddDays(index % 100 + 15)
                     }));
             context.Tasks.AddRange(
-                Enumerable.Range(1, 1 << 10)
+                Enumerable.Range(1, 1 << 4)
                     .Select(index => new Task()
                     {
                         Name = $"Task {index}",
@@ -79,17 +79,36 @@ namespace AdminPoC
                         DueDate = DateTime.Now.AddDays(index % 100 + 15),
                         ExecutionType = TaskExecutionType.Finished,
                         LabelType = TaskLabelType.Hibernate,
-                        ProjectId = index % 50 + 1
+                        ProjectId = index % 7 + 1
                     }));
 
             context.Employees.AddRange(
-                Enumerable.Range(1, 10)
+                Enumerable.Range(1, 4)
                     .Select(index => new Employee()
                     {
                         Username = $"Employee {index}",
                         Email = $"employee{index}@gmail.com",
                         Phone = "123123 123  123",
                     }));
+
+            context.EmployeeTasks.AddRange(
+                new EmployeeTasks
+                {
+                    EmployeeId = 1,
+                    TaskId = 2,
+                }, new EmployeeTasks
+                {
+                    EmployeeId = 2,
+                    TaskId = 2,
+                }, new EmployeeTasks
+                {
+                    EmployeeId = 3,
+                    TaskId = 2,
+                }, new EmployeeTasks
+                {
+                    EmployeeId = 4,
+                    TaskId = 2,
+                });
             context.SaveChanges();
         }
     }

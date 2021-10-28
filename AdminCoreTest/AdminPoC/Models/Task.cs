@@ -1,6 +1,7 @@
 ﻿namespace AdminPoC.Models
 {
     using System;
+    using System.Collections.Generic;
     using System.ComponentModel.DataAnnotations;
 
     public class Task
@@ -26,6 +27,8 @@
         public int ProjectId { get; set; }
 
         public Project Project { get; set; }
+        
+        public IEnumerable<EmployeeTasks> EmployeeTasks { get; set; }
 
         public override string ToString()
             => this.Name;
