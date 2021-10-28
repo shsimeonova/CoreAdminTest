@@ -11,10 +11,19 @@ namespace AdminPoC.ViewModels
         public IEnumerable<ComplexInputType> ComplexProperties { get; set; }
     }
 
+    public class EditViewModel
+    {
+        public CreateViewModel Properties { get; set; }
+        
+        public object Entity { get; set; }
+    }
+
     public class InputType
     {
         public string Name { get; set; }
         public Type Type { get; set; }
+
+        public bool IsReadonly { get; set; }
     }
 
     public class ComplexInputType

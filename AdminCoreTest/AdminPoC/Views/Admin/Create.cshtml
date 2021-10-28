@@ -4,15 +4,16 @@
     Layout = "_Layout";
 }
 
-<form asp-action="Create">
+<form asp-action="Create" style="display: flex; flex-direction: column">
     @foreach (var property in Model.Properties)
     {
         @Html.Label(property.Name, property.Name)
-        <formInput for-type="property.Type" for-name="@property.Name"></formInput>
+        <formInput for-type="property.Type" for-name="property.Name"> </formInput>
     }
 
     @foreach (var property in Model.ComplexProperties)
     {
+        @Html.Label(property.Name, property.Name)
         @Html.DropDownList(
             property.Name,
             property.Values)

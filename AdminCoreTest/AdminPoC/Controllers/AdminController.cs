@@ -92,22 +92,25 @@ namespace AdminPoC.Controllers
         public virtual IActionResult Create()
             => this.View("../Admin/Create", this.GetCreateViewModel());
 
+        public virtual IActionResult Edit(string id)
+            => this.View("../Admin/Edit", this.GetEditViewModel(id));
+
         [HttpPost]
         public virtual IActionResult Create(T obj)
         {
-            var errors = this.EntityValidators
-                .Select(v => v(obj))
-                .Where(x => !x.IsValid)
-                .Select(x => x.Message)
-                .ToList();
-
-            if (errors.Any())
-            {
-                throw new Exception(string.Join(", ", errors));
-            }
-
+            this.ValidateBeforeSave(obj);
             this.db.Set<T>()
                 .Add(obj);
+            this.db.SaveChanges();
+
+            return this.RedirectToAction("Index");
+        }
+
+        [HttpPost]
+        public virtual IActionResult Edit(T obj)
+        {
+            this.ValidateBeforeSave(obj);
+            this.db.Entry(obj).State = EntityState.Modified;
             this.db.SaveChanges();
 
             return this.RedirectToAction("Index");
@@ -116,7 +119,7 @@ namespace AdminPoC.Controllers
         [HttpGet]
         public IActionResult Delete(string id)
         {
-            var lambda = this.GetObjectById(id);
+            var lambda = this.GetObjectByIdLambda(id);
 
             var obj = this.db.Set<T>()
                 .FirstOrDefault(lambda);
@@ -127,7 +130,21 @@ namespace AdminPoC.Controllers
             return this.RedirectToAction("Index");
         }
 
-        private Expression<Func<T, bool>> GetObjectById(string id)
+        private void ValidateBeforeSave(T entity)
+        {
+            var errors = this.EntityValidators
+                .Select(v => v(entity))
+                .Where(x => !x.IsValid)
+                .Select(x => x.Message)
+                .ToList();
+
+            if (errors.Any())
+            {
+                throw new Exception(string.Join(", ", errors));
+            }
+        }
+
+        private Expression<Func<T, bool>> GetObjectByIdLambda(string id)
         {
             var primaryKeyProp = this.entityType
                 .GetPrimaryKeyPropertyInfo();
@@ -176,6 +193,28 @@ namespace AdminPoC.Controllers
                 Entities = dbSet.Reverse(),
                 Columns = entityColumns.Concat(this.DynamicColumns),
                 Actions = this.Actions,
+            };
+        }
+
+        private EditViewModel GetEditViewModel(string id)
+        {
+            var properties = this.GetCreateViewModel();
+            properties.Properties = new List<InputType>
+                {
+                    new()
+                    {
+                        Name = "Id",
+                        Type = this.entityType.GetPrimaryKeyPropertyInfo().PropertyType,
+                        IsReadonly = true,
+                    }
+                }
+                .Concat(properties.Properties);
+
+            return new EditViewModel
+            {
+                Properties = properties,
+                Entity = this.db.Set<T>()
+                    .FirstOrDefault(this.GetObjectByIdLambda(id)),
             };
         }
 

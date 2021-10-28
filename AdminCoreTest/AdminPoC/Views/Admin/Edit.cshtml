@@ -1,0 +1,32 @@
+@model AdminPoC.ViewModels.EditViewModel
+@{
+    ViewBag.Title = "title";
+    Layout = "_Layout";
+}
+
+<form asp-action="Edit" method="post" style="display: flex; flex-direction: column">
+    @foreach (var property in Model.Properties.Properties)
+    {
+        var currentValue = Model.Entity.GetType()
+            .GetProperties()
+            .FirstOrDefault(x => x.Name == property.Name)
+            ?.GetValue(Model.Entity);
+        @Html.Label(property.Name, property.Name)
+        <formInput
+            for-type="property.Type"
+            for-name="@(property.Name)"
+            with-value="currentValue"
+            readonly="@(property.IsReadonly)">
+        </formInput>
+    }
+
+    @foreach (var property in Model.Properties.ComplexProperties)
+    {
+        @Html.Label(property.Name, property.Name)
+        @Html.DropDownList(
+            property.Name,
+            property.Values)
+        ;
+    }
+    <button>Create</button>
+</form>
